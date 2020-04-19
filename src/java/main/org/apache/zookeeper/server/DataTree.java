@@ -430,6 +430,7 @@ public class DataTree {
             updateCount(lastPrefix, 1);
             updateBytes(lastPrefix, data == null ? 0 : data.length);
         }
+        // 通知两个事件，一个是 NodeCreated，一个是 NodeChildrenChanged
         dataWatches.triggerWatch(path, Event.EventType.NodeCreated);
         childWatches.triggerWatch(parentName.equals("") ? "/" : parentName,
                 Event.EventType.NodeChildrenChanged);
@@ -712,6 +713,7 @@ public class DataTree {
                 case OpCode.create:
                     CreateTxn createTxn = (CreateTxn) txn;
                     rc.path = createTxn.getPath();
+                    // 以 create 操作为例，修改内存中的数据
                     createNode(
                             createTxn.getPath(),
                             createTxn.getData(),

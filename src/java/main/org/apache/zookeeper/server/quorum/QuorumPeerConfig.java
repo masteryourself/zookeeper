@@ -148,7 +148,7 @@ public class QuorumPeerConfig {
             } finally {
                 in.close();
             }
-
+            // 解析配置文件属性
             parseProperties(cfg);
         } catch (IOException e) {
             throw new ConfigException("Error processing " + path, e);
@@ -167,6 +167,7 @@ public class QuorumPeerConfig {
     throws IOException, ConfigException {
         int clientPort = 0;
         String clientPortAddress = null;
+        // 循环所有键值对，进行数据解析
         for (Entry<Object, Object> entry : zkProp.entrySet()) {
             String key = entry.getKey().toString().trim();
             String value = entry.getValue().toString().trim();

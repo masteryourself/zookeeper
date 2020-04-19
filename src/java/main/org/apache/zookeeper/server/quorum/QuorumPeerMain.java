@@ -71,6 +71,9 @@ public class QuorumPeerMain {
     protected QuorumPeer quorumPeer;
 
     /**
+     * 注意：启动这个类需要指定配置文件位置
+     * 即在 Program arguments 配置 D:\workspace\opensource\zookeeper\conf\zoo.cfg
+     *
      * To start the replicated server specify the configuration file name on
      * the command line.
      * @param args path to the configfile
@@ -78,6 +81,7 @@ public class QuorumPeerMain {
     public static void main(String[] args) {
         QuorumPeerMain main = new QuorumPeerMain();
         try {
+            // 根据参数初始化并启动 zk
             main.initializeAndRun(args);
         } catch (IllegalArgumentException e) {
             LOG.error("Invalid arguments, exiting abnormally", e);
@@ -101,6 +105,7 @@ public class QuorumPeerMain {
     {
         QuorumPeerConfig config = new QuorumPeerConfig();
         if (args.length == 1) {
+            // 调用 parse() 方法解析入参
             config.parse(args[0]);
         }
 
@@ -109,13 +114,14 @@ public class QuorumPeerMain {
                 .getDataDir(), config.getDataLogDir(), config
                 .getSnapRetainCount(), config.getPurgeInterval());
         purgeMgr.start();
-
+        // 集群启动
         if (args.length == 1 && config.servers.size() > 0) {
             runFromConfig(config);
         } else {
             LOG.warn("Either no config or no quorum defined in config, running "
                     + " in standalone mode");
             // there is only server in the quorum -- run as standalone
+            // 单机启动
             ZooKeeperServerMain.main(args);
         }
     }

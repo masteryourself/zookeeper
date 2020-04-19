@@ -137,8 +137,10 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                 }
                 if (si != null) {
                     // track the number of records written to the log
+                    // 添加到事务日志中
                     if (zks.getZKDatabase().append(si)) {
                         logCount++;
+                        // 如果 logCount 数量大于一定阈值
                         if (logCount > (snapCount / 2 + randRoll)) {
                             setRandRoll(r.nextInt(snapCount/2));
                             // roll the log
@@ -156,6 +158,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                                             }
                                         }
                                     };
+                                // 启动一个线程去打印快照，此时也会将 logStream 进行 flush() 操作
                                 snapInProcess.start();
                             }
                             logCount = 0;
@@ -166,6 +169,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                         // flushes (writes), then just pass this to the next
                         // processor
                         if (nextProcessor != null) {
+                            // 交给下一个请求处理器
                             nextProcessor.processRequest(si);
                             if (nextProcessor instanceof Flushable) {
                                 ((Flushable)nextProcessor).flush();
@@ -174,6 +178,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                         continue;
                     }
                     toFlush.add(si);
+                    // 如果累计的 toFlush 数量 >1000
                     if (toFlush.size() > 1000) {
                         flush(toFlush);
                     }
@@ -191,11 +196,12 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
     {
         if (toFlush.isEmpty())
             return;
-
+        // 调用 commit() 提交
         zks.getZKDatabase().commit();
         while (!toFlush.isEmpty()) {
             Request i = toFlush.remove();
             if (nextProcessor != null) {
+                // 交给下一个请求处理器
                 nextProcessor.processRequest(i);
             }
         }

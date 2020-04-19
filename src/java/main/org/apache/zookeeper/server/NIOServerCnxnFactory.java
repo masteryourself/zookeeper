@@ -82,6 +82,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
         configureSaslLogin();
 
         thread = new ZooKeeperThread(this, "NIOServerCxn.Factory:" + addr);
+        // 设置为守护线程，和 JVM 的生命周期绑定
         thread.setDaemon(true);
         maxClientCnxns = maxcc;
         this.ss = ServerSocketChannel.open();
@@ -113,9 +114,12 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
     @Override
     public void startup(ZooKeeperServer zks) throws IOException,
             InterruptedException {
+        // 启动线程
         start();
         setZooKeeperServer(zks);
+        // 初始化 ZKDatabase
         zks.startdata();
+        // 启动 session 跟踪器和请求处理器
         zks.startup();
     }
 

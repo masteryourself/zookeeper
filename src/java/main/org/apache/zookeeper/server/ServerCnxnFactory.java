@@ -106,9 +106,11 @@ public abstract class ServerCnxnFactory {
     public abstract void closeAll();
     
     static public ServerCnxnFactory createFactory() throws IOException {
+        // 获取 zookeeper.serverCnxnFactory 对应的 socket 连接技术，方便自定义扩展
         String serverCnxnFactoryName =
             System.getProperty(ZOOKEEPER_SERVER_CNXN_FACTORY);
         if (serverCnxnFactoryName == null) {
+            // 默认使用【NIOServerCnxnFactory】，即 NIO
             serverCnxnFactoryName = NIOServerCnxnFactory.class.getName();
         }
         try {

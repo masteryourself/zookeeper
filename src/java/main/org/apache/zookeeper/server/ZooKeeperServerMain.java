@@ -52,6 +52,7 @@ public class ZooKeeperServerMain {
     public static void main(String[] args) {
         ZooKeeperServerMain main = new ZooKeeperServerMain();
         try {
+            // 单机启动 zk
             main.initializeAndRun(args);
         } catch (IllegalArgumentException e) {
             LOG.error("Invalid arguments, exiting abnormally", e);
@@ -85,7 +86,7 @@ public class ZooKeeperServerMain {
         } else {
             config.parse(args);
         }
-
+        // 启动 zk
         runFromConfig(config);
     }
 
@@ -116,9 +117,12 @@ public class ZooKeeperServerMain {
             zkServer.setTickTime(config.tickTime);
             zkServer.setMinSessionTimeout(config.minSessionTimeout);
             zkServer.setMaxSessionTimeout(config.maxSessionTimeout);
+            // 获取建立 socket 的工厂，默认是【NIOServerCnxnFactory】
             cnxnFactory = ServerCnxnFactory.createFactory();
+            // 注册选择器，初始化 ZooKeeperThread 线程
             cnxnFactory.configure(config.getClientPortAddress(),
                     config.getMaxClientCnxns());
+            // 初始化工作
             cnxnFactory.startup(zkServer);
             // Watch status of ZooKeeper server. It will do a graceful shutdown
             // if the server is not running or hits an internal error.

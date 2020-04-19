@@ -485,6 +485,7 @@ public class ZKDatabase {
      * @throws IOException
      */
     public void commit() throws IOException {
+        // 将文件流进行 flush() 操作落盘
         this.snapLog.commit();
     }
     

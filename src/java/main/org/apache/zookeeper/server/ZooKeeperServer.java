@@ -404,6 +404,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             zkDb = new ZKDatabase(this.txnLogFactory);
         }  
         if (!zkDb.isInitialized()) {
+            // 获取数据
             loadData();
         }
     }
@@ -412,7 +413,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (sessionTracker == null) {
             createSessionTracker();
         }
+        // session 跟踪器，判断 session 是否超时需要移除
         startSessionTracker();
+        // 启动请求处理器
         setupRequestProcessors();
 
         registerJMX();
@@ -426,6 +429,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         RequestProcessor syncProcessor = new SyncRequestProcessor(this,
                 finalProcessor);
         ((SyncRequestProcessor)syncProcessor).start();
+        // 在创建时指定下一个请求处理器
+        // 当前请求处理器顺序是：PrepRequestProcessor -> SyncRequestProcessor -> FinalRequestProcessor
         firstProcessor = new PrepRequestProcessor(this, syncProcessor);
         ((PrepRequestProcessor)firstProcessor).start();
     }
@@ -1073,6 +1078,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         ProcessTxnResult rc;
         int opCode = hdr.getType();
         long sessionId = hdr.getClientId();
+        // 处理请求
         rc = getZKDatabase().processTxn(hdr, txn);
         if (opCode == OpCode.createSession) {
             if (txn instanceof CreateSessionTxn) {

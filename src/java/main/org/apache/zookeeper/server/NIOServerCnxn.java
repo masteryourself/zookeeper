@@ -1115,6 +1115,7 @@ public class NIOServerCnxn extends ServerCnxn {
             // Make space for length
             BinaryOutputArchive bos = BinaryOutputArchive.getArchive(baos);
             try {
+                // 通过 NIO 发送给客户端
                 baos.write(fourBytes);
                 bos.writeRecord(h, "header");
                 if (r != null) {
