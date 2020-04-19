@@ -32,6 +32,7 @@ public class PathUtils {
 	 */
 	public static void validatePath(String path, boolean isSequential) 
 		throws IllegalArgumentException {
+	    // 如果是顺序节点，验证时候的 path 的径会 +1
 		validatePath(isSequential? path + "1": path);
 	}
 	

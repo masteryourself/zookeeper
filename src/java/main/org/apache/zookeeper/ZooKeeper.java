@@ -441,16 +441,19 @@ public class ZooKeeper {
     {
         LOG.info("Initiating client connection, connectString=" + connectString
                 + " sessionTimeout=" + sessionTimeout + " watcher=" + watcher);
-
+        // 设置 defaultWatcher
         watchManager.defaultWatcher = watcher;
-
+        // 包装地址
         ConnectStringParser connectStringParser = new ConnectStringParser(
                 connectString);
+        // 打乱连接地址
         HostProvider hostProvider = new StaticHostProvider(
                 connectStringParser.getServerAddresses());
+        // 初始化客户端的上下文，getClientCnxnSocket() 方法是决定使用哪种 socket 连接技术
         cnxn = new ClientCnxn(connectStringParser.getChrootPath(),
                 hostProvider, sessionTimeout, this, watchManager,
                 getClientCnxnSocket(), canBeReadOnly);
+        // 启动上面初始化时创建的两个线程
         cnxn.start();
     }
 
@@ -772,12 +775,15 @@ public class ZooKeeper {
         throws KeeperException, InterruptedException
     {
         final String clientPath = path;
+        // 验证路径是否有效
         PathUtils.validatePath(clientPath, createMode.isSequential());
 
         final String serverPath = prependChroot(clientPath);
-
+        // 构建请求头
         RequestHeader h = new RequestHeader();
+        // 设置操作类型
         h.setType(ZooDefs.OpCode.create);
+        // 创建 CreateRequest，设置属性值
         CreateRequest request = new CreateRequest();
         CreateResponse response = new CreateResponse();
         request.setData(data);
@@ -787,7 +793,9 @@ public class ZooKeeper {
             throw new KeeperException.InvalidACLException();
         }
         request.setAcl(acl);
+        // 提交请求
         ReplyHeader r = cnxn.submitRequest(h, request, response, null);
+        // 如果有错误，就直接抛出异常
         if (r.getErr() != 0) {
             throw KeeperException.create(KeeperException.Code.get(r.getErr()),
                     clientPath);
@@ -1839,9 +1847,11 @@ public class ZooKeeper {
     }
 
     private static ClientCnxnSocket getClientCnxnSocket() throws IOException {
+        // 获取 zookeeper.clientCnxnSocket 对应的 socket 连接技术，方便自定义扩展
         String clientCnxnSocketName = System
                 .getProperty(ZOOKEEPER_CLIENT_CNXN_SOCKET);
         if (clientCnxnSocketName == null) {
+            // 默认使用【ClientCnxnSocketNIO】，即 NIO
             clientCnxnSocketName = ClientCnxnSocketNIO.class.getName();
         }
         try {

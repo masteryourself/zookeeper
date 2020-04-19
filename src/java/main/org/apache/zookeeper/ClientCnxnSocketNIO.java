@@ -64,6 +64,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         if (sock == null) {
             throw new IOException("Socket is null!");
         }
+        // 读就绪
         if (sockKey.isReadable()) {
             int rc = sock.read(incomingBuffer);
             if (rc < 0) {
@@ -91,6 +92,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     updateLastHeard();
                     initialized = true;
                 } else {
+                    // 读取结果，这里也包含发送数据的逻辑
                     sendThread.readResponse(incomingBuffer);
                     lenBuffer.clear();
                     incomingBuffer = lenBuffer;
@@ -98,8 +100,10 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                 }
             }
         }
+        // 写就绪
         if (sockKey.isWritable()) {
             synchronized(outgoingQueue) {
+                // 从队列中取出第一个数据
                 Packet p = findSendablePacket(outgoingQueue,
                         cnxn.sendThread.clientTunneledAuthenticationInProgress());
 
@@ -114,14 +118,18 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                         }
                         p.createBB();
                     }
+                    // 通过 socket 写入，发送给服务端
                     sock.write(p.bb);
+                    // 如果数据全部发送完成，没有剩余的
                     if (!p.bb.hasRemaining()) {
                         sentCount++;
+                        // 将数据移除
                         outgoingQueue.removeFirstOccurrence(p);
                         if (p.requestHeader != null
                                 && p.requestHeader.getType() != OpCode.ping
                                 && p.requestHeader.getType() != OpCode.auth) {
                             synchronized (pendingQueue) {
+                                // 把 Packet 加入到 pendingQueue 队列中，就是为了处理结果
                                 pendingQueue.add(p);
                             }
                         }
@@ -357,12 +365,16 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         updateNow();
         for (SelectionKey k : selected) {
             SocketChannel sc = ((SocketChannel) k.channel());
+            // 连接建立事件
             if ((k.readyOps() & SelectionKey.OP_CONNECT) != 0) {
                 if (sc.finishConnect()) {
                     updateLastSendAndHeard();
                     sendThread.primeConnection();
                 }
-            } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
+            }
+            // 已经连接成功，读就绪或者写就绪
+            else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
+                // 调用 doIO() 方法传输数据
                 doIO(pendingQueue, outgoingQueue, cnxn);
             }
         }

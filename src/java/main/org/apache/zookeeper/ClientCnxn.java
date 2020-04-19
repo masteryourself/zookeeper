@@ -399,7 +399,7 @@ public class ClientCnxn {
         connectTimeout = sessionTimeout / hostProvider.size();
         readTimeout = sessionTimeout * 2 / 3;
         readOnly = canBeReadOnly;
-
+        // 初始化两个线程
         sendThread = new SendThread(clientCnxnSocket);
         eventThread = new EventThread();
 
@@ -651,6 +651,7 @@ public class ClientCnxn {
         if (p.cb == null) {
             synchronized (p) {
                 p.finished = true;
+                // 唤醒
                 p.notifyAll();
             }
         } else {
@@ -739,6 +740,7 @@ public class ClientCnxn {
             ReplyHeader replyHdr = new ReplyHeader();
 
             replyHdr.deserialize(bbia, "header");
+            // -2 表示 ping
             if (replyHdr.getXid() == -2) {
                 // -2 is the xid for pings
                 if (LOG.isDebugEnabled()) {
@@ -750,6 +752,7 @@ public class ClientCnxn {
                 }
                 return;
             }
+            // -4 表示 auth 校验
             if (replyHdr.getXid() == -4) {
                 // -4 is the xid for AuthPacket               
                 if(replyHdr.getErr() == KeeperException.Code.AUTHFAILED.intValue()) {
@@ -763,6 +766,7 @@ public class ClientCnxn {
                 }
                 return;
             }
+            // -1 表示事件通知
             if (replyHdr.getXid() == -1) {
                 // -1 means notification
                 if (LOG.isDebugEnabled()) {
@@ -813,6 +817,7 @@ public class ClientCnxn {
                     throw new IOException("Nothing in the queue, but got "
                             + replyHdr.getXid());
                 }
+                // 从 pendingQueue 中获取数据
                 packet = pendingQueue.remove();
             }
             /*
@@ -838,6 +843,7 @@ public class ClientCnxn {
                 if (replyHdr.getZxid() > 0) {
                     lastZxid = replyHdr.getZxid();
                 }
+                // 给 packet 设置响应
                 if (packet.response != null && replyHdr.getErr() == 0) {
                     packet.response.deserialize(bbia, "response");
                 }
@@ -847,6 +853,7 @@ public class ClientCnxn {
                             + Long.toHexString(sessionId) + ", packet:: " + packet);
                 }
             } finally {
+                // 唤醒 packet
                 finishPacket(packet);
             }
         }
@@ -1017,7 +1024,7 @@ public class ClientCnxn {
                 }
             }
             logStartConnect(addr);
-
+            // 默认用 NIO 进行 socket 连接
             clientCnxnSocket.connect(addr);
         }
 
@@ -1041,11 +1048,15 @@ public class ClientCnxn {
             long lastPingRwServer = Time.currentElapsedTime();
             final int MAX_SEND_PING_INTERVAL = 10000; //10 seconds
             InetSocketAddress serverAddress = null;
+            // 如果是存活状态，即不是 CLOSED 和 AUTH_FAILED 状态
             while (state.isAlive()) {
                 try {
+                    // 如果没有连接
                     if (!clientCnxnSocket.isConnected()) {
+                        // 如果不是第一次连接
                         if(!isFirstConnect){
                             try {
+                                // 随机睡眠一下
                                 Thread.sleep(r.nextInt(1000));
                             } catch (InterruptedException e) {
                                 LOG.warn("Unexpected exception", e);
@@ -1059,8 +1070,10 @@ public class ClientCnxn {
                             serverAddress = rwServerAddress;
                             rwServerAddress = null;
                         } else {
+                            // 从 hostProvider 取出一个地址，zk 连接时允许连接多个主机
                             serverAddress = hostProvider.next(1000);
                         }
+                        // 进行 socket 连接
                         startConnect(serverAddress);
                         clientCnxnSocket.updateLastSendAndHeard();
                     }
@@ -1097,11 +1110,13 @@ public class ClientCnxn {
                                       authState,null));
                             }
                         }
+                        // 如果 to 是负数，表示读超时
                         to = readTimeout - clientCnxnSocket.getIdleRecv();
                     } else {
+                        // 如果 to 是负数，表示连接超时
                         to = connectTimeout - clientCnxnSocket.getIdleRecv();
                     }
-                    
+                    // <0 会抛出异常，但是下面有 catch 住异常，进行连接重试
                     if (to <= 0) {
                         String warnInfo;
                         warnInfo = "Client session timed out, have not heard from server in "
@@ -1119,6 +1134,7 @@ public class ClientCnxn {
                         		((clientCnxnSocket.getIdleSend() > 1000) ? 1000 : 0);
                         //send a ping request either time is due or no packet sent out within MAX_SEND_PING_INTERVAL
                         if (timeToNextPing <= 0 || clientCnxnSocket.getIdleSend() > MAX_SEND_PING_INTERVAL) {
+                            // 发送 ping 命令
                             sendPing();
                             clientCnxnSocket.updateLastSend();
                         } else {
@@ -1141,7 +1157,7 @@ public class ClientCnxn {
                         }
                         to = Math.min(to, pingRwTimeout - idlePingRwServer);
                     }
-
+                    // 调用 doTransport() 传输数据
                     clientCnxnSocket.doTransport(to, pendingQueue, outgoingQueue, ClientCnxn.this);
                 } catch (Throwable e) {
                     if (closing) {
@@ -1404,10 +1420,12 @@ public class ClientCnxn {
             Record response, WatchRegistration watchRegistration)
             throws InterruptedException {
         ReplyHeader r = new ReplyHeader();
+        // 包装成 Packet 对象，然后入列
         Packet packet = queuePacket(h, r, request, response, null, null, null,
                     null, watchRegistration);
         synchronized (packet) {
             while (!packet.finished) {
+                // 阻塞在这里等待服务端处理完结果
                 packet.wait();
             }
         }
@@ -1458,6 +1476,7 @@ public class ClientCnxn {
                 if (h.getType() == OpCode.closeSession) {
                     closing = true;
                 }
+                // 添加到 outgoingQueue 队列中
                 outgoingQueue.add(packet);
             }
         }

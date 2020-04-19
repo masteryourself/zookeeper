@@ -160,6 +160,7 @@ public class ZooKeeperMain {
         public static final Pattern QUOTED_PATTERN = Pattern.compile("^([\'\"])(.*)(\\1)$");
 
         public MyCommandOptions() {
+            // 默认连接的 server 是 localhost:2181
           options.put("server", "localhost:2181");
           options.put("timeout", "30000");
         }
@@ -265,7 +266,8 @@ public class ZooKeeperMain {
         return new LinkedList<String>(commandMap.keySet());
     }
 
-    protected String getPrompt() {       
+    protected String getPrompt() {
+        // 命令行前缀
         return "[zk: " + host + "("+zk.getState()+")" + " " + commandCount + "] ";
     }
 
@@ -288,12 +290,22 @@ public class ZooKeeperMain {
         throws KeeperException, IOException, InterruptedException
     {
         ZooKeeperMain main = new ZooKeeperMain(args);
+        // 使用 jline.ConsoleReader 进行命令行交互
         main.run();
     }
 
+    /**
+     * 客户端使用 zkCli.sh 脚本，其实就是调用这里的 main() 方法
+     * 默认连接的地址是 localhost:2181
+     *
+     * @param args
+     * @throws IOException
+     * @throws InterruptedException
+     */
     public ZooKeeperMain(String args[]) throws IOException, InterruptedException {
         cl.parseOptions(args);
         System.out.println("Connecting to " + cl.getOption("server"));
+        // 这里面实际上用的还是 ZooKeeper
         connectToZK(cl.getOption("server"));
         //zk = new ZooKeeper(cl.getOption("server"),
 //                Integer.parseInt(cl.getOption("timeout")), new MyWatcher());
@@ -329,6 +341,7 @@ public class ZooKeeperMain {
                 String line;
                 Method readLine = consoleC.getMethod("readLine", String.class);
                 while ((line = (String)readLine.invoke(console, getPrompt())) != null) {
+                    // 执行命令
                     executeLine(line);
                 }
             } catch (ClassNotFoundException e) {
@@ -369,6 +382,7 @@ public class ZooKeeperMain {
       if (!line.equals("")) {
         cl.parseCommand(line);
         addToHistory(commandCount,line);
+        // 处理命令
         processCmd(cl);
         commandCount++;
       }
@@ -597,6 +611,7 @@ public class ZooKeeperMain {
         throws KeeperException, IOException, InterruptedException
     {
         try {
+            // 处理命令
             return processZKCmd(co);
         } catch (IllegalArgumentException e) {
             System.err.println("Command failed: " + e);
@@ -643,7 +658,7 @@ public class ZooKeeperMain {
         String path = null;
         List<ACL> acl = Ids.OPEN_ACL_UNSAFE;
         LOG.debug("Processing " + cmd);
-
+        // 对不同类型的命令进行不同的处理，最终都是调用 zk 的客户端进行处理
         if (cmd.equals("quit")) {
             System.out.println("Quitting...");
             zk.close();
